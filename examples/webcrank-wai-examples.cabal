@@ -1,0 +1,28 @@
+name:               webcrank-wai-examples
+version:            0.0.1
+license:            BSD3
+license-file:       LICENCE
+author:             Richard Wallace <rwallace@thewallacepack.net>
+maintainer:         Richard Wallace <rwallace@thewallacepack.net>
+copyright:          (c) 2015 Richard Wallace
+synopsis:           Example WAI Application built with Webcrank
+category:           Web
+homepage:           https://github.com/webcrank/webcrank-wai
+bug-reports:        https://github.com/webcrank/webcrank-wai/issues
+cabal-version:      >= 1.8
+build-type:         Simple
+
+flag                small_base
+  description:      Choose the new, split-up base package.
+
+executable examples
+  main-is:          Main.hs
+  build-depends:    base                            >= 4.6 && < 5
+                  , bytestring
+                  , exceptions
+                  , mtl
+                  , text
+                  , warp
+                  , webcrank-wai
+
+  ghc-options:      -Wall
