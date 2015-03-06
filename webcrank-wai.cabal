@@ -1,7 +1,7 @@
 name:               webcrank-wai
-version:            0.0.1
+version:            0.1
 license:            BSD3
-license-file:       LICENCE
+license-file:       LICENSE
 author:             Richard Wallace <rwallace@thewallacepack.net>
 maintainer:         Richard Wallace <rwallace@thewallacepack.net>
 copyright:          (c) 2015 Richard Wallace
@@ -14,6 +14,16 @@ build-type:         Simple
 description:
   Build a WAI Application from Webcrank Resources.
 
+extra-source-files:
+  .gitignore
+  .travis.yml
+  examples/LICENSE
+  examples/webcrank-wai-examples.cabal
+  examples/*.hs
+  HLint.hs
+  LICENSE
+  README.md
+
 source-repository   head
   type:             git
   location:         https://github.com/webcrank/webcrank-wai.git
@@ -22,6 +32,12 @@ flag                small_base
   description:      Choose the new, split-up base package.
 
 library
+  hs-source-dirs:   src
+
+  exposed-modules:  Webcrank.Wai
+
+  ghc-options:      -Wall
+
   build-depends:    base                            >= 4.6 && < 5
                   , bytestring
                   , containers
@@ -32,13 +48,4 @@ library
                   , wai
                   , webcrank
                   , webcrank-dispatch
-
-  ghc-options:
-                    -Wall
-
-  hs-source-dirs:
-                    src
-
-  exposed-modules:
-                    Webcrank.Wai
 
