@@ -42,9 +42,12 @@ library
                   , bytestring
                   , containers
                   , exceptions
+                  , lens
                   , mtl
+                  , reroute
                   , transformers
                   , unix-compat
+                  , unordered-containers
                   , wai
                   , webcrank
                   , webcrank-dispatch
