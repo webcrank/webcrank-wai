@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -8,27 +9,25 @@
 module Webcrank.Wai
   ( WaiResource
   , WaiCrankT
+  , dispatch
+  , HasRequest(..)
+  , HasRequestDate(..)
   , WaiData
   , ReqData
-  , dispatch
-  , getRequest
-  , getRequestHeader
   , module Webcrank
   , module Webcrank.Dispatch
-  , module Network.Wai
   ) where
 
 import Control.Applicative
 import Control.Lens
 import Control.Monad.Catch
 import Control.Monad.RWS
-import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
-import Data.Foldable (find)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Maybe
 import Data.Traversable
-import Network.Wai
+import Network.Wai hiding (pathInfo, requestHeaders)
+import Network.Wai.Lens
 import System.PosixCompat.Time
 
 import Webcrank
@@ -38,15 +37,15 @@ import Webcrank.ServerAPI hiding (handleRequest)
 import qualified Webcrank.ServerAPI as API
 
 data WaiData m = WaiData
-  { _waiDataResourceData :: ResourceData m
+  { _resourceData :: ResourceData m
   , _waiDataRequest :: Request
   , _waiDataRequestDate :: HTTPDate
   }
 
-makeClassy ''WaiData
+makeFields ''WaiData
 
 instance HasResourceData (WaiData m) m where
-  resourceData = waiDataResourceData
+  resourceData f ~(WaiData rd rq d) = fmap (\rd' -> WaiData rd' rq d) (f rd)
 
 newtype WaiCrankT m a =
   WaiCrankT { unWaiCrankT :: RWST (WaiData (WaiCrankT m)) LogData ReqData m a }
@@ -86,22 +85,13 @@ dispatch'
   -> m ResponseReceived
 dispatch' d rq respond = maybe (sendNotFound respond) run disp where
   run r = handleRequest r rq respond
-  disp = W.dispatch d (pathInfo rq)
+  disp = W.dispatch d (rq ^. pathInfo)
 
 sendNotFound
   :: MonadIO m
   => (Response -> IO ResponseReceived)
   -> m ResponseReceived
 sendNotFound respond = liftIO $ respond $ responseLBS notFound404 [] "404 Not Found"
-
-getRequest :: (MonadReader r m, HasWaiData r n) => m Request
-getRequest = view waiDataRequest
-
-getRequestHeader
-  :: (Functor m, MonadReader r m, HasWaiData r n)
-  => HeaderName
-  -> m (Maybe ByteString)
-getRequestHeader h = (snd <$>) . find ((h ==) . fst) . requestHeaders <$> getRequest
 
 runWaiCrankT
   :: (Applicative m, MonadCatch m, MonadIO m)
@@ -121,16 +111,17 @@ handleRequest r rq respond = do
   now <- liftIO epochTime
   let rd = WaiData (newResourceData api r) rq (epochTimeToHTTPDate now)
   res <- API.handleRequest (flip runWaiCrankT rd)
-  liftIO $ respond $ toWaiRes res
+  liftIO $ respond $ waiRes res
 
-toWaiRes :: (Status, HeadersMap, Maybe Body) -> Response
-toWaiRes (s, hs, b) = responseLBS s (hdrs hs) (fromMaybe LBS.empty b) where
+waiRes :: (Status, HeadersMap, Maybe Body) -> Response
+waiRes (s, hs, b) = responseLBS s (hdrs hs) (fromMaybe LBS.empty b) where
   hdrs = join . fmap sequenceA . HashMap.toList
 
 api :: (Applicative m, Monad m) => WaiServerAPI m
 api = ServerAPI
-  { srvGetRequestMethod = requestMethod <$> view waiDataRequest
-  , srvGetRequestHeader = getRequestHeader
+  { srvGetRequestMethod = requestMethod <$> view request
+  , srvGetRequestHeader = \h ->
+      preview (request . headers . value h)
   , srvGetRequestURI = undefined
-  , srvGetRequestTime = view waiDataRequestDate
+  , srvGetRequestTime = view requestDate
   }
