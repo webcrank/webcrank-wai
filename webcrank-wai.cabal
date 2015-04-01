@@ -40,18 +40,11 @@ library
 
   build-depends:    base                            >= 4.6 && < 5
                   , bytestring
-                  , containers
                   , exceptions
-                  , http-types
                   , lens
-                  , network
                   , mtl
-                  , reroute
-                  , text
-                  , transformers
                   , unix-compat
                   , unordered-containers
-                  , vault
                   , wai
                   , wai-lens
                   , webcrank
