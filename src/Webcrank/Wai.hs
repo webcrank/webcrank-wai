@@ -36,6 +36,7 @@ import qualified Webcrank.Dispatch as W
 import Webcrank.ServerAPI hiding (handleRequest)
 import qualified Webcrank.ServerAPI as API
 
+-- | Holds the request and resource state during request processing.
 data WaiData m = WaiData
   { _resourceData :: ResourceData m
   , _waiDataRequest :: Request
@@ -47,6 +48,8 @@ makeFields ''WaiData
 instance HasResourceData (WaiData m) m where
   resourceData f ~(WaiData rd rq d) = fmap (\rd' -> WaiData rd' rq d) (f rd)
 
+-- | Monad transformer that all resource functions will run in. Provides
+-- the ability to read the WAI @'Request'@ inside resource functions.
 newtype WaiCrankT m a =
   WaiCrankT { unWaiCrankT :: RWST (WaiData (WaiCrankT m)) LogData ReqData m a }
   deriving
@@ -66,15 +69,18 @@ instance MonadTrans WaiCrankT where
   lift = WaiCrankT . lift
 
 type WaiResource m = Resource (WaiCrankT m)
+
 type WaiServerAPI m = ServerAPI (WaiCrankT m)
 
+-- | Function for turning @'Dispatcher'@s into @'Application'@s.
+-- A @run@ function must be provided for executing the application
+-- logic.  In the simplest case, where @m@ is @IO@, this can just be
+-- @'id'@.
 dispatch
   :: (Applicative m, MonadIO m, MonadCatch m)
-  => (forall a. m a -> IO a)
+  => (forall a. m a -> IO a) -- ^ run
   -> Dispatcher (WaiResource m)
-  -> Request
-  -> (Response -> IO ResponseReceived)
-  -> IO ResponseReceived
+  -> Application
 dispatch f d rq = f . dispatch' d rq
 
 dispatch'
