@@ -39,14 +39,14 @@ library
   ghc-options:      -Wall
 
   build-depends:    base                            >= 4.6 && < 5
-                  , bytestring
-                  , exceptions
-                  , lens
-                  , mtl
+                  , bytestring                      >=0.9.1.10 && <0.11
+                  , exceptions                      >=0.1.1 && <1
+                  , lens                            >=4.5 && <4.9
+                  , mtl                             >=2.0.1 && <2.3
                   , unix-compat
-                  , unordered-containers
-                  , wai
-                  , wai-lens
-                  , webcrank
-                  , webcrank-dispatch
+                  , unordered-containers            ==0.2.*
+                  , wai                             >=3.0 && <4
+                  , wai-lens                        >=0.1
+                  , webcrank                        >=0.1
+                  , webcrank-dispatch               >=0.1
 
