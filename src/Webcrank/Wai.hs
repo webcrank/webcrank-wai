@@ -22,11 +22,13 @@ import Control.Applicative
 import Control.Lens
 import Control.Monad.Catch
 import Control.Monad.RWS
-import qualified Data.ByteString.Lazy as LBS
+import Data.ByteString (ByteString)
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as LB
 import qualified Data.HashMap.Strict as HashMap
 import Data.Maybe
 import Data.Traversable
-import Network.Wai hiding (pathInfo, requestHeaders)
+import Network.Wai hiding (rawPathInfo, pathInfo, requestHeaders)
 import Network.Wai.Lens
 import System.PosixCompat.Time
 
@@ -79,18 +81,20 @@ type WaiServerAPI m = ServerAPI (WaiCrankT m)
 dispatch
   :: (Applicative m, MonadIO m, MonadCatch m)
   => (forall a. m a -> IO a) -- ^ run
+  -> ByteString -- ^ base uri
   -> Dispatcher (WaiResource m)
   -> Application
-dispatch f d rq = f . dispatch' d rq
+dispatch f u d rq = f . dispatch' d u rq
 
 dispatch'
   :: (Applicative m, MonadIO m, MonadCatch m)
   => Dispatcher (WaiResource m)
+  -> ByteString -- ^ base uri
   -> Request
   -> (Response -> IO ResponseReceived)
   -> m ResponseReceived
-dispatch' d rq respond = maybe (sendNotFound respond) run disp where
-  run r = handleRequest r rq respond
+dispatch' d u rq respond = maybe (sendNotFound respond) run disp where
+  run r = handleRequest r u rq respond
   disp = W.dispatch d (rq ^. pathInfo)
 
 sendNotFound
@@ -110,24 +114,25 @@ runWaiCrankT w d = do
 handleRequest
   :: (Applicative m, MonadCatch m, MonadIO m)
   => WaiResource m
+  -> ByteString -- ^ base uri
   -> Request
   -> (Response -> IO ResponseReceived)
   -> m ResponseReceived
-handleRequest r rq respond = do
+handleRequest r u rq respond = do
   now <- liftIO epochTime
-  let rd = WaiData (newResourceData api r) rq (epochTimeToHTTPDate now)
+  let rd = WaiData (newResourceData (api u) r) rq (epochTimeToHTTPDate now)
   res <- API.handleRequest (flip runWaiCrankT rd)
   liftIO $ respond $ waiRes res
 
 waiRes :: (Status, HeadersMap, Maybe Body) -> Response
-waiRes (s, hs, b) = responseLBS s (hdrs hs) (fromMaybe LBS.empty b) where
+waiRes (s, hs, b) = responseLBS s (hdrs hs) (fromMaybe LB.empty b) where
   hdrs = join . fmap sequenceA . HashMap.toList
 
-api :: (Applicative m, Monad m) => WaiServerAPI m
-api = ServerAPI
+api :: (Applicative m, Monad m) => ByteString -> WaiServerAPI m
+api baseUri = ServerAPI
   { srvGetRequestMethod = requestMethod <$> view request
   , srvGetRequestHeader = \h ->
       preview (request . headers . value h)
-  , srvGetRequestURI = undefined
+  , srvGetRequestURI = view $ request . rawPathInfo . to (B.takeWhile (/= 63) . (baseUri <>))
   , srvGetRequestTime = view requestDate
   }

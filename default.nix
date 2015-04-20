@@ -5,7 +5,7 @@
 }:
 mkDerivation {
   pname = "webcrank-wai";
-  version = "0.1";
+  version = "0.2";
   src = ./.;
   buildDepends = [
     base bytestring containers exceptions http-types lens mtl network
