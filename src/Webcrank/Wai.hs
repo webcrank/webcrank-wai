@@ -14,6 +14,7 @@ module Webcrank.Wai
   , HasRequestDate(..)
   , WaiData
   , ReqData
+  , getRequestBodyLBS
   , module Webcrank
   , module Webcrank.Dispatch
   ) where
@@ -30,6 +31,7 @@ import Data.Maybe
 import Data.Traversable
 import Network.Wai hiding (rawPathInfo, pathInfo, requestHeaders)
 import Network.Wai.Lens
+import Prelude
 import System.PosixCompat.Time
 
 import Webcrank
@@ -136,3 +138,7 @@ api baseUri = ServerAPI
   , srvGetRequestURI = view $ request . rawPathInfo . to (B.takeWhile (/= 63) . (baseUri <>))
   , srvGetRequestTime = view requestDate
   }
+
+getRequestBodyLBS :: (MonadIO m, MonadReader s m, HasRequest s Request) => m LB.ByteString
+getRequestBodyLBS = liftIO . lazyRequestBody =<< view request
+

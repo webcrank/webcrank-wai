@@ -6,7 +6,7 @@
 mkDerivation {
   pname = "webcrank-wai";
   version = "0.2";
-  src = ./.;
+  src = builtins.filterSource (path: type: baseNameOf path != ".git" && baseNameOf path != "dist") ./.;
   buildDepends = [
     base bytestring containers exceptions http-types lens mtl network
     reroute text transformers unix-compat unordered-containers vault
